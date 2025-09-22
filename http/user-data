@@ -1,0 +1,72 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  timezone: "America/New_York"
+
+  refresh_installer:
+    update: true
+
+  updates: all
+
+  early-commands:
+    # Prevent Packer to connect to Installer's SSH server
+    - systemctl stop ssh.socket
+    - systemctl stop ssh.service
+
+  network:
+    version: 2
+    ethernets:
+      eth0:
+        dhcp4: true
+        dhcp-identifier: mac
+
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+    swap:
+      size: 0
+
+  packages:
+    # Virtual Tools
+    - linux-image-virtual
+    - linux-tools-virtual
+    - linux-cloud-tools-virtual
+    # Prevent ssh sessions being uncleanly terminated
+    - libpam-systemd
+    # Default shell
+    - zsh
+    - eza
+    - figlet
+
+  late-commands:
+    # Generate traditional NIC names
+    - sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"$/GRUB_CMDLINE_LINUX_DEFAULT=="\1 net.ifnames=0 biosdevname=0"/g' /target/etc/default/grub
+    - sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT=" net.ifnames/GRUB_CMDLINE_LINUX_DEFAULT="net.ifnames/g' /target/etc/default/grub
+    # Cleanup MOTD
+    - touch /target/var/lib/update-notifier/hide-esm-in-motd
+    - sed -i 's/ENABLED=1/ENABLED=0/' /target/etc/default/motd-news
+    - chmod -x /target/etc/update-motd.d/10-help-text
+    - chmod -x /target/etc/update-motd.d/50-motd-news
+    # Set default shell to ZSH
+    - sed -i 's/^SHELL=\/bin\/sh/SHELL=\/usr\/bin\/zsh/' /target/etc/default/useradd
+    - sed -i 's/^#DSHELL=\/bin\/bash/DSHELL=\/usr\/bin\/zsh/' /target/etc/adduser.conf
+
+    - curtin in-target --target=/target -- update-grub
+
+  user-data:
+    hostname: ubuntu2404
+    users:
+      - name: vagrant
+        hashed_passwd: "$6$8P/WYeedh2vMmmn4$5LZtQr7MvzvtE2AGkQIlXJjZKyOUOyHwOcu5WSYBO7ls3.rgnGfl.236U0uAGbFY2ZCJt55tFBeJ1P1j.WQp/1" #vagrant
+        lock_passwd: false
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /usr/bin/zsh
+        uid: 1200
