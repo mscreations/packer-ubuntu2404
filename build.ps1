@@ -212,7 +212,7 @@ Write-Host "Running: packer build .\ubuntu.pkr.hcl"
 packer build `
     -timestamp-ui `
     -var "iso_urls=$isoUrlsJson" `
-    -var "iso_checksum=$($info.Checksum)" `
+    -var "iso_checksum=$($UbuntuVersion.Checksum)" `
     -var "build_description=$buildDescription" `
     $packerFile
 
