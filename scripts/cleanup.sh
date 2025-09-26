@@ -108,6 +108,31 @@ rm -f /root/.wget-hsts
 echo "force a new random seed to be generated"
 rm -f /var/lib/systemd/random-seed
 
+# Delete existing host keys
+rm -f /etc/ssh/ssh_host_*
+
+# Drop in systemd unit
+cat >/etc/systemd/system/regenerate-ssh-host-keys.service <<'EOF'
+[Unit]
+Description=Regenerate SSH host keys if missing
+Before=ssh.service
+ConditionPathExistsGlob=!/etc/ssh/ssh_host_*
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/dpkg-reconfigure openssh-server
+ExecStartPost=/bin/systemctl disable regenerate-ssh-host-keys.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Tell systemd about the new unit
+systemctl daemon-reload
+
+# Enable the service
+systemctl enable regenerate-ssh-host-keys.service
+
 # Whiteout root
 count=$(df --sync -kP / | tail -n1  | awk -F ' ' '{print $4}')
 count=$(($count-1))
